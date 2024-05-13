@@ -1,13 +1,11 @@
 import { IItemBuyData } from "@spt-aki/models/eft/common/tables/ITrader";
 import { IProcessSellTradeRequestData } from "@spt-aki/models/eft/trade/IProcessSellTradeRequestData";
 
-export interface BrokerPriceManagerCache
-{
+export interface BrokerPriceManagerCache {
     itemRagfairPriceTable: Record<string, number>;
 }
 
-export interface BrokerSellData
-{
+export interface BrokerSellData {
     ItemId: string;
     TraderId: string;
     Price: number;
@@ -17,8 +15,7 @@ export interface BrokerSellData
     Tax: number;
 }
 
-export interface SellDecision 
-{
+export interface SellDecision {
     // trader: TraderBaseData; unnecessary
     traderId: string;
     price: number;
@@ -27,8 +24,7 @@ export interface SellDecision
     commissionInRoubles: number;
     tax?: number;
 }
-export interface TraderMetaData
-{
+export interface TraderMetaData {
     id: string;
     name: string;
     currency: string;
@@ -37,8 +33,7 @@ export interface TraderMetaData
     buyPriceCoef: number;
 }
 
-export interface TradersMetaData 
-{
+export interface TradersMetaData {
     [traderId: string]: TraderMetaData
 }
 
@@ -48,8 +43,7 @@ export interface TradersMetaData
 // Sort of has a little bit of unnecessary data,
 // but that helps calculating the flea rep change
 // inside the controler, and also log some info.
-export interface ProcessedSellData
-{
+export interface ProcessedSellData {
     [traderId: string]: {
         isFleaMarket: boolean;
         traderName: string;

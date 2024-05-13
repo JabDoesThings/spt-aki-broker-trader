@@ -23,21 +23,18 @@ import { VerboseLogger } from "./verbose_logger";
 import { BrokerPriceManager } from "./broker_price_manager";
 import { Traders } from "@spt-aki/models/enums/Traders";
 import { TraderHelper } from "@spt-aki/helpers/TraderHelper";
-import { DynamicRouterModService } from "@spt-aki/services/mod/dynamicRouter/DynamicRouterModService"
 import { BrokerTraderRouter } from "./broker_trader_router";
 import { IPostAkiLoadMod } from "@spt-aki/models/external/IPostAkiLoadMod";
 import { ItemBaseClassService } from "@spt-aki/services/ItemBaseClassService";
 import { FixedItemBaseClassService } from "./temporary_ItemBaseClassService_fix";
 
-class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
-{
+class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod {
     mod: string;
     logger: VerboseLogger;
 
     private static container: DependencyContainer;
 
-    constructor() 
-    {
+    constructor() {
         this.mod = `${modInfo.name} ${modInfo.version}`; // Set name of mod so we can log it to console later
     }
 
@@ -45,34 +42,29 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * Some work needs to be done prior to SPT code being loaded, registering the profile image + setting trader update time inside the trader config json
      * @param container Dependency container
      */
-    public preAkiLoad(container: DependencyContainer): void 
-    {
+    public preAkiLoad(container: DependencyContainer): void {
         BrokerTrader.container = container;
         this.logger = new VerboseLogger(container);
         this.logger.explicitInfo(`[${this.mod}] preAki Loading... `);
-        
+
         // Temporary
-        if (modCfg["useItemBaseClassServiceFix"] === true)
-        {
+        if (modCfg["useItemBaseClassServiceFix"] === true) {
             this.logger.explicitInfo(`[${this.mod}] Fixing ItemBaseClassService...`);
             container.register<FixedItemBaseClassService>(FixedItemBaseClassService.name, FixedItemBaseClassService);
-            container.register(ItemBaseClassService.name, {useToken: FixedItemBaseClassService.name});
+            container.register(ItemBaseClassService.name, { useToken: FixedItemBaseClassService.name });
         }
 
-        if (modCfg.profitCommissionPercentage < 0 || modCfg.profitCommissionPercentage > 99)
-        {
+        if (modCfg.profitCommissionPercentage < 0 || modCfg.profitCommissionPercentage > 99) {
             this.logger.explicitError(`[${this.mod}] Config error! "profitCommissionPercentage": ${modCfg.profitCommissionPercentage}, must have a value not less than 0 and not more than 99.`)
             throw (`${this.mod} Config error. "profitCommissionPercentage" out of range [0-99]`);
         }
 
-        if (modCfg.buyRateDollar < 0 || modCfg.buyRateEuro < 0)
-        {
+        if (modCfg.buyRateDollar < 0 || modCfg.buyRateEuro < 0) {
             this.logger.explicitError(`[${this.mod}] Config error! One of currencies "buyRate", is less than 0.`)
             throw (`${this.mod} Config error. A currency "buyRate" must be a positive number.`);
         }
 
-        if (!(modCfg["useClientPlugin"] ?? true))
-        {
+        if (!(modCfg["useClientPlugin"] ?? true)) {
             this.logger.explicitWarning(`[${this.mod}] Warning! Using this mod with "useClientPlugin": false is not directly supported. Price inaccuracies are expected. If you encounted serious problems(features completely not functioning, endless loadings, server exceptions etc.), please inform the developer directly.`);
         }
 
@@ -84,7 +76,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
 
         // Controller override - to handle trade requests
         container.register<BrokerTradeController>(BrokerTradeController.name, BrokerTradeController);
-        container.register(TradeController.name, {useToken: BrokerTradeController.name});
+        container.register(TradeController.name, { useToken: BrokerTradeController.name });
 
         // DataCallbacks override - to handle sell price display
         // container.register<BrokerDataCallbacks>(BrokerDataCallbacks.name, BrokerDataCallbacks);
@@ -94,18 +86,17 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
         BrokerTraderRouter.registerRouter(container);
 
         this.registerProfileImage(preAkiModLoader, imageRouter);
-        
+
         this.setupTraderUpdateTime(traderConfig);
-        
+
         this.logger.explicitInfo(`[${this.mod}] preAki Loaded`);
     }
-    
+
     /**
      * Majority of trader-related work occurs after the aki database has been loaded but prior to SPT code being run
      * @param container Dependency container
      */
-    public postDBLoad(container: DependencyContainer): void 
-    {
+    public postDBLoad(container: DependencyContainer): void {
         this.logger.explicitInfo(`[${this.mod}] postDb Loading... `);
 
         // !Required! Instantialize BrokerPriceManager after DB has loaded.
@@ -120,16 +111,13 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
         // Get a reference to the database tables
         const tables = databaseServer.getTables();
 
-        const brokerBase = {...baseJson};
+        const brokerBase = { ...baseJson };
         // Ignore config "items_buy" and merge all buy categories from other traders.
         brokerBase.items_buy.category = [];
         brokerBase.items_buy.id_list = [];
-        
-        //console.log(JSON.stringify(BrokerPriceManager.instance.supportedTraders));
-        for (const tId of Object.values(BrokerPriceManager.instance.supportedTraders))
-        {
+
+        for (const tId of Object.values(BrokerPriceManager.instance.supportedTraders)) {
             const trader = tables.traders[tId];
-            // if (trader == undefined) console.log(`[TRADER BASE] ${tId}`);
             brokerBase.items_buy.category = brokerBase.items_buy.category.concat(trader.base.items_buy.category);
             brokerBase.items_buy.id_list = brokerBase.items_buy.id_list.concat(trader.base.items_buy.id_list);
         }
@@ -138,14 +126,14 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
         else brokerBase.items_buy_prohibited.id_list.push(Money.DOLLARS);
         if (modCfg.buyRateEuro > 0) brokerBase.items_buy.id_list.push(Money.EUROS);
         else brokerBase.items_buy_prohibited.id_list.push(Money.EUROS);
-        
+
         // Add new trader to the trader dictionary in DatabaseServer
         this.addTraderToDb(baseJson, tables, jsonUtil, container);
 
-        const brokerDesc = 
-            "In the past, he worked at one of the largest exchanges in Russia. "+
-            "At some point, he decided to move to the growing Norvinsk Special Economic Zone in pursuit of alluring opportunities. "+
-            "Whether he somehow knew of the upcoming conflict in the region or not, he definetly found his profits in the current situation. "+
+        const brokerDesc =
+            "In the past, he worked at one of the largest exchanges in Russia. " +
+            "At some point, he decided to move to the growing Norvinsk Special Economic Zone in pursuit of alluring opportunities. " +
+            "Whether he somehow knew of the upcoming conflict in the region or not, he definetly found his profits in the current situation. " +
             "Nowadays he provides brokerage services at Tarkov's central market.";
 
         this.addTraderToLocales(tables, `${baseJson.name} ${baseJson.surname}`, baseJson.name, baseJson.nickname, baseJson.location, brokerDesc);
@@ -153,8 +141,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
         this.logger.explicitInfo(`[${this.mod}] postDb Loaded`);
     }
 
-    public postAkiLoad(container: DependencyContainer): void
-    {
+    public postAkiLoad(container: DependencyContainer): void {
         // Initialize look-up tables and cache them here.
         // Most likely it's required to be done at "postAkiLoad()" to get proper flea offers from SPT-AKI API.
         // Passing a container is just an extra measure, since it should be already instantialized at "postDBLoad()"
@@ -166,8 +153,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * @param preAkiModLoader mod loader class - used to get the mods file path
      * @param imageRouter image router class - used to register the trader image path so we see their image on trader page
      */
-    private registerProfileImage(preAkiModLoader: PreAkiModLoader, imageRouter: ImageRouter): void
-    {
+    private registerProfileImage(preAkiModLoader: PreAkiModLoader, imageRouter: ImageRouter): void {
         // Reference the mod "res" folder
         const imageFilepath = `./${preAkiModLoader.getModPath(`nightingale-broker_trader-${modInfo.version}`)}res`;
 
@@ -179,10 +165,12 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * Add record to trader config to set the refresh time of trader in seconds (default is 60 minutes)
      * @param traderConfig trader config to add our trader to
      */
-    private setupTraderUpdateTime(traderConfig: ITraderConfig): void
-    {
+    private setupTraderUpdateTime(traderConfig: ITraderConfig): void {
         // Add refresh time in seconds to config
-        const traderRefreshRecord: UpdateTime = { traderId: baseJson._id, seconds: 3600 }
+        // SPT 3.7.X
+        // const traderRefreshRecord: UpdateTime = { traderId: baseJson._id, seconds: 3600 }
+        // SPT 3.8.X
+        const traderRefreshRecord: UpdateTime = { traderId: baseJson._id, seconds: { min: 3600, max: 3600 } }
         traderConfig.updateTime.push(traderRefreshRecord);
     }
 
@@ -192,10 +180,9 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * @param tables database
      * @param jsonUtil json utility class
      */
-    
+
     // rome-ignore lint/suspicious/noExplicitAny: traderDetailsToAdd comes from base.json, so no type
-    private addTraderToDb(traderDetailsToAdd: any, tables: IDatabaseTables, jsonUtil: JsonUtil, container: DependencyContainer): void
-    {
+    private addTraderToDb(traderDetailsToAdd: any, tables: IDatabaseTables, jsonUtil: JsonUtil, container: DependencyContainer): void {
         // Add trader to trader table, key is the traders id
         tables.traders[traderDetailsToAdd._id] = {
             assort: this.createAssortTable(tables, jsonUtil, container), // assorts are the 'offers' trader sells, can be a single item (e.g. carton of milk) or multiple items as a collection (e.g. a gun)
@@ -212,8 +199,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * Create assorts for trader and add milk and a gun to it
      * @returns ITraderAssort
      */
-    private createAssortTable(tables: IDatabaseTables, jsonUtil: JsonUtil, container: DependencyContainer): ITraderAssort
-    {
+    private createAssortTable(tables: IDatabaseTables, jsonUtil: JsonUtil, container: DependencyContainer): ITraderAssort {
         // Create a blank assort object, ready to have items added
         const assortTable: ITraderAssort = {
             nextResupply: 0,
@@ -234,7 +220,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
         const skiAssort = traderHelper.getTraderAssortsByTraderId(Traders.SKIER);
         const skiEurItemId = skiAssort.items.find(item => item._tpl === eurosId)._id;
         const skiEuroPrice = skiAssort.barter_scheme[skiEurItemId][0][0].count;
-        
+
         // View function documentation for what all the parameters are
         this.addSingleItemToAssort(assortTable, dollarsId, true, 9999999, 1, Money.ROUBLES, pkDollarPrice);
         this.addSingleItemToAssort(assortTable, eurosId, true, 9999999, 1, Money.ROUBLES, skiEuroPrice);
@@ -256,8 +242,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * @param currencyType What currency does item sell for
      * @param currencyValue Amount of currency item can be purchased for
      */
-    private addSingleItemToAssort(assortTable: ITraderAssort, itemTpl: string, unlimitedCount: boolean, stackCount: number, loyaltyLevel: number, currencyType: Money, currencyValue: number)
-    {
+    private addSingleItemToAssort(assortTable: ITraderAssort, itemTpl: string, unlimitedCount: boolean, stackCount: number, loyaltyLevel: number, currencyType: Money, currencyValue: number) {
         // Define item in the table
         const newItem: Item = {
             _id: itemTpl,
@@ -296,8 +281,7 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * @param currencyType What currency does item sell for
      * @param currencyValue Amount of currency item can be purchased for
      */
-    private addCollectionToAssort(jsonUtil: JsonUtil, assortTable: ITraderAssort, items: Item[], unlimitedCount: boolean, stackCount: number, loyaltyLevel: number, currencyType: Money, currencyValue: number): void
-    {
+    private addCollectionToAssort(jsonUtil: JsonUtil, assortTable: ITraderAssort, items: Item[], unlimitedCount: boolean, stackCount: number, loyaltyLevel: number, currencyType: Money, currencyValue: number): void {
         // Deserialize and serialize to ensure we dont alter the original data
         const collectionToAdd: Item[] = jsonUtil.deserialize(jsonUtil.serialize(items));
 
@@ -335,12 +319,10 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
      * @param location location of trader
      * @param description description of trader
      */
-    private addTraderToLocales(tables: IDatabaseTables, fullName: string, firstName: string, nickName: string, location: string, description: string)
-    {
+    private addTraderToLocales(tables: IDatabaseTables, fullName: string, firstName: string, nickName: string, location: string, description: string) {
         // For each language, add locale for the new trader
         const locales = Object.values(tables.locales.global) as Record<string, string>[];
-        for (const locale of locales) 
-        {
+        for (const locale of locales) {
             locale[`${baseJson._id} FullName`] = fullName;
             locale[`${baseJson._id} FirstName`] = firstName;
             locale[`${baseJson._id} Nickname`] = nickName;
@@ -349,12 +331,10 @@ class BrokerTrader implements IPreAkiLoadMod, IPostDBLoadMod, IPostAkiLoadMod
         }
     }
 
-    private addItemToLocales(tables: IDatabaseTables, itemTpl: string, name: string, shortName: string, Description: string)
-    {
+    private addItemToLocales(tables: IDatabaseTables, itemTpl: string, name: string, shortName: string, Description: string) {
         // For each language, add locale for the new trader
         const locales = Object.values(tables.locales.global) as Record<string, string>[];
-        for (const locale of locales) 
-        {
+        for (const locale of locales) {
             locale[`${itemTpl} Name`] = name;
             locale[`${itemTpl} ShortName`] = shortName;
             locale[`${itemTpl} Description`] = Description;

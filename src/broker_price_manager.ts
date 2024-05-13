@@ -29,8 +29,7 @@ import { TraderHelper } from "@spt-aki/helpers/TraderHelper";
 import { TradersMetaData, BrokerSellData, BrokerPriceManagerCache, TraderMetaData, SellDecision, ProcessedSellData } from "./broker_price_manager_types";
 import { ItemComponentTypes, ItemPointsData } from "./item_component_helper_types";
 import { ItemBaseClassService } from "@spt-aki/services/ItemBaseClassService";
-export class BrokerPriceManager 
-{
+export class BrokerPriceManager {
     private static _instance: BrokerPriceManager;
 
     private _container: DependencyContainer;
@@ -52,7 +51,7 @@ export class BrokerPriceManager
     public static brokerTraderId = baseJson._id; // for flea trades
     public static brokerTraderCurrencyExhangeId = `${baseJson._id}-currency-exchange`; // for currency exchange
     private componentHelper: ItemComponentHelper;
-    
+
     private dbServer: DatabaseServer;
     private dbGlobals: IGlobals;
     private dbItems: Record<string, ITemplateItem>; // Might replace with ItemHelper.getItems() since I don't write anything into the database
@@ -65,8 +64,7 @@ export class BrokerPriceManager
 
     private _clientBrokerSellData: Record<string, BrokerSellData> = {};
 
-    private constructor(container?: DependencyContainer)
-    {
+    private constructor(container?: DependencyContainer) {
         this._container = container ?? tsyringeContainer;
 
         this.componentHelper = new ItemComponentHelper(this._container);
@@ -88,14 +86,13 @@ export class BrokerPriceManager
 
         this._currencyBasePrices = {};
     }
-    
+
     /**
      * Initializes the array of supported trader ids. 
      * Move to a separate method to make it delayed.
      * Should be executed inside initializeLookUpTables(PostAkiLoad), after all custom traders have been loaded into the database.
      */
-    public initializeSupportedTraders(): void
-    {
+    public initializeSupportedTraders(): void {
         // Init supported traders list with default traders, except lighthouse keeper
         //const defaultTraderIds: string[] = Object.values(Traders).filter((id: string) => id !== Traders.LIGHTHOUSEKEEPER);
         const defaultTraderIds: string[] = [
@@ -109,23 +106,20 @@ export class BrokerPriceManager
             Traders.JAEGER
             // No need to filter out Lighthouse Keeper here
         ];
-    
+
         this.supportedTraders = defaultTraderIds;
         // Pull up custom traders
-        if (modConfig.useCustomTraders)
-        {
+        if (modConfig.useCustomTraders) {
             // If no explicit id's specified just use any available trader from database (except LK).
-            if (modConfig.customTraderIds == null || modConfig.customTraderIds.length < 1)
-            {
+            if (modConfig.customTraderIds == null || modConfig.customTraderIds.length < 1) {
                 // Exclude LK and "ragfair"
                 this.supportedTraders = Object.keys(this.dbTraders).filter(
-                    (id: string) => 
+                    (id: string) =>
                         ![Traders.LIGHTHOUSEKEEPER, "ragfair", BrokerPriceManager.brokerTraderId, BrokerPriceManager.brokerTraderCurrencyExhangeId].includes(id)
                 );
                 console.log("No custom trader id's specified. Using all available traders.")
             }
-            else 
-            {
+            else {
                 // Filter out accidental trader id's to avoid duplicates
                 this.supportedTraders = this.supportedTraders.concat(modConfig.customTraderIds.filter(
                     id => !defaultTraderIds.concat([BrokerPriceManager.brokerTraderId, BrokerPriceManager.brokerTraderCurrencyExhangeId]).includes(id))
@@ -139,8 +133,7 @@ export class BrokerPriceManager
      * Assigns "SellDecision" data received from the client. Client provided data allows for accurate prices and taxes.
      * @param data Received "SellDecision" data.
      */
-    public setClientBrokerPriceData(data: Record<string, BrokerSellData>): void
-    {
+    public setClientBrokerPriceData(data: Record<string, BrokerSellData>): void {
         this._clientBrokerSellData = data;
     }
 
@@ -149,77 +142,66 @@ export class BrokerPriceManager
      * Generates look-up tables.
      * Uses cache to speed up server load time on next start ups.
      */
-    public initializeLookUpTables(): void
-    {        
+    public initializeLookUpTables(): void {
         // Init array of supported traders id.
         this.initializeSupportedTraders();
         // BrokerPriceManager.getInstance(); - can be used as a temporary bandaid but...
         // This method should fail if class hasn't been yet instantialized.
         const cacheDir = path.normalize(path.resolve(`${__dirname}/../cache`));
         const cacheFullPath = path.normalize(path.resolve(`${__dirname}/../cache/cache.json`));
-        
-        if (fs.existsSync(cacheFullPath) && modConfig.useCache)
-        {
+
+        if (fs.existsSync(cacheFullPath) && modConfig.useCache) {
             this.tryToLoadCache(cacheFullPath);
         }
-        else 
-        {
+        else {
             this.generateLookUpTables();
             if (modConfig.useCache)
-                this.tryToSaveCache(cacheDir, cacheFullPath);         
+                this.tryToSaveCache(cacheDir, cacheFullPath);
         }
-        
+
         this._tradersMetaData = this.getTradersMetaData(); // no need to cache, it's trivial and new traders might require it to be up-to-date. 
         console.log(`[${modInfo.name} ${modInfo.version}] Loaded trader meta data from database.`);
         this.initializeCurrencyBuyRates(); // no need to cache since it's trivial
         console.log(`[${modInfo.name} ${modInfo.version}] Loaded currency buy rates from config.`);
-        
-        
-    } 
 
-    private generateLookUpTables(): void
-    {
+
+    }
+
+    private generateLookUpTables(): void {
         console.log(`[${modInfo.name} ${modInfo.version}] Generating ragfair price look-up table...`);
         this._itemRagfairPriceTable = this.getItemRagfairPriceTable();
         console.log(`[${modInfo.name} ${modInfo.version}] Look-up table successfully generated.`);
     }
 
-    private tryToSaveCache(absCacheDir: string, absCacheFullPath: string): void
-    {
+    private tryToSaveCache(absCacheDir: string, absCacheFullPath: string): void {
         console.log(`[${modInfo.name} ${modInfo.version}] Saving ragfair price look-up table to cache...`);
-        try 
-        {
+        try {
             const bpmCache: BrokerPriceManagerCache = {
                 itemRagfairPriceTable: this._itemRagfairPriceTable
             }
             fs.mkdirSync(absCacheDir);
-            fs.writeFileSync(absCacheFullPath, JSON.stringify(bpmCache), {flag: "w"});
+            fs.writeFileSync(absCacheFullPath, JSON.stringify(bpmCache), { flag: "w" });
         }
-        catch (error) 
-        {
+        catch (error) {
             console.log(`[${modInfo.name} ${modInfo.version}] Error. Couldn't save to cache.`);
         }
         console.log(`[${modInfo.name} ${modInfo.version}] Look-up table successfully cached.`);
     }
 
-    private tryToLoadCache(absCacheFullPath: string): void
-    {
+    private tryToLoadCache(absCacheFullPath: string): void {
         console.log(`[${modInfo.name} ${modInfo.version}] Loading ragfair price look-up table from cache...`);
-        try 
-        {
-            const bpmCache = JSON.parse(fs.readFileSync(absCacheFullPath, {flag: "r"}).toString()) as BrokerPriceManagerCache;
+        try {
+            const bpmCache = JSON.parse(fs.readFileSync(absCacheFullPath, { flag: "r" }).toString()) as BrokerPriceManagerCache;
             this._itemRagfairPriceTable = bpmCache.itemRagfairPriceTable;
         }
-        catch (error) 
-        {
+        catch (error) {
             console.log(`[${modInfo.name} ${modInfo.version}] Error. Couldn't load look-up tables from cache. Please remove cache file if it exists, to resave the cache next time you launch the server.`);
             this.generateLookUpTables();
         }
         console.log(`[${modInfo.name} ${modInfo.version}] Look-up table successfully loaded from cache.`);
     }
 
-    private initializeCurrencyBuyRates()
-    {
+    private initializeCurrencyBuyRates() {
         // Get USD and EUR prices from PK and Skier assorts
         const pkAssort = this.traderHelper.getTraderAssortsByTraderId(Traders.PEACEKEEPER);
         const pkUsdItemId = pkAssort.items.find(item => item._tpl === Money.DOLLARS)._id;
@@ -233,10 +215,8 @@ export class BrokerPriceManager
         this._currencyBasePrices[Money.EUROS] = skiEuroPrice;
     }
 
-    public static getInstance(container?: DependencyContainer): BrokerPriceManager
-    {
-        if (!this._instance)
-        {
+    public static getInstance(container?: DependencyContainer): BrokerPriceManager {
+        if (!this._instance) {
             BrokerPriceManager._instance = new BrokerPriceManager(container);
         }
         return this._instance;
@@ -247,8 +227,7 @@ export class BrokerPriceManager
      * @param traderId Trader id to check.
      * @returns true | false - whether it's a "sell to flea" Broker id.
      */
-    public static isFleaMarket(traderId: string): boolean
-    {
+    public static isFleaMarket(traderId: string): boolean {
         return BrokerPriceManager.brokerTraderId === traderId;
     }
 
@@ -257,33 +236,27 @@ export class BrokerPriceManager
      * @param traderId Trader id to check.
      * @returns true | false - whether the id is one of Broker's ids.
      */
-    public static isBroker(traderId: string): boolean
-    {
+    public static isBroker(traderId: string): boolean {
         return [BrokerPriceManager.brokerTraderId, BrokerPriceManager.brokerTraderCurrencyExhangeId].includes(traderId);
     }
 
-    public get container(): DependencyContainer
-    {
+    public get container(): DependencyContainer {
         return this._container;
     }
 
-    public static get instance(): BrokerPriceManager
-    {
+    public static get instance(): BrokerPriceManager {
         return this.getInstance();
     }
 
-    public get currencyBasePrices(): Record<string, number>
-    {
+    public get currencyBasePrices(): Record<string, number> {
         return this._currencyBasePrices
     }
 
-    public get tradersMetaData(): TradersMetaData
-    {
+    public get tradersMetaData(): TradersMetaData {
         return this._tradersMetaData;
     }
 
-    public get itemRagfairPriceTable(): Record<string, number>
-    {
+    public get itemRagfairPriceTable(): Record<string, number> {
         return this._itemRagfairPriceTable;
     }
 
@@ -291,11 +264,9 @@ export class BrokerPriceManager
      * Collectst average ragfair price for each item template. Used as a base price when calculating item ragfair sell price(Broker sell to flea feature).
      * @returns Record, key - item template id, value - average ragfair price, based on existing offers.
      */
-    public getItemRagfairPriceTable(): Record<string, number>
-    {
+    public getItemRagfairPriceTable(): Record<string, number> {
         const validRagfairItemTplIds = Object.values(this.dbItems).filter(itemTpl => this.ragfairServerHelper.isItemValidRagfairItem([true, itemTpl])).map(itemTpl => itemTpl._id);
-        return validRagfairItemTplIds.reduce((accum, itemTplId) => 
-        {
+        return validRagfairItemTplIds.reduce((accum, itemTplId) => {
             accum[itemTplId] = this.getItemTemplateRagfairPrice(itemTplId);
             return accum;
         }, {});
@@ -306,12 +277,10 @@ export class BrokerPriceManager
      * Includes 2 "traders" to designate Broker flea sales and currency exchange
      * @returns TradersMetaData. Key is trader Id, value - TraderMetaData
      */
-    private getTradersMetaData(): TradersMetaData
-    {
+    private getTradersMetaData(): TradersMetaData {
         const data: TradersMetaData = {};
         const defaultTraderIds: string[] = Object.values(Traders);
-        for (const traderId of this.supportedTraders)
-        {
+        for (const traderId of this.supportedTraders) {
             const traderName = this.dbTraders[traderId].base.nickname;
             const currency = this.dbTraders[traderId].base.currency;
             const traderCoef = this.dbTraders[traderId].base.loyaltyLevels[0].buy_price_coef;
@@ -334,16 +303,16 @@ export class BrokerPriceManager
             id: BrokerPriceManager.brokerTraderId,
             name: `${baseJson.nickname.toUpperCase()}(Flea Market)`,
             currency: "RUB",
-            itemsBuy: {category: [], id_list: []},
-            itemsBuyProhibited: {category: [], id_list: []},
+            itemsBuy: { category: [], id_list: [] },
+            itemsBuyProhibited: { category: [], id_list: [] },
             buyPriceCoef: Infinity // to make sure it's never selected as the most profitable trader
-        }; 
-        data[BrokerPriceManager.brokerTraderCurrencyExhangeId] ={
+        };
+        data[BrokerPriceManager.brokerTraderCurrencyExhangeId] = {
             id: BrokerPriceManager.brokerTraderCurrencyExhangeId,
             name: `${baseJson.nickname.toUpperCase()}(Currency Ex.)`,
             currency: "RUB",
-            itemsBuy: {category: [], id_list: []},
-            itemsBuyProhibited: {category: [], id_list: []},
+            itemsBuy: { category: [], id_list: [] },
+            itemsBuyProhibited: { category: [], id_list: [] },
             buyPriceCoef: Infinity // to make sure it's never selected as the most profitable trader
         };
         return data;
@@ -358,8 +327,7 @@ export class BrokerPriceManager
      * @param traderId Id of the trader to check.
      * @returns true | false
      */
-    public canBeSoldToTrader(pmcData: IPmcData, item: Item, traderId: string): boolean
-    {
+    public canBeSoldToTrader(pmcData: IPmcData, item: Item, traderId: string): boolean {
         const itemAndChildren = this.itemHelper.findAndReturnChildrenAsItems(pmcData.Inventory.items, item._id);
         return !itemAndChildren.some(item => !this.canTemplateBeSoldToTrader(item._tpl, traderId) || !this.passesBuyoutRestrictions(item, traderId === Traders.FENCE))
             && (modConfig.tradersIgnoreUnlockedStatus || (pmcData?.TradersInfo[traderId]?.unlocked ?? false)); // default being false seems logical, but might change to true if needed
@@ -371,8 +339,7 @@ export class BrokerPriceManager
      * @param traderId Trader Id
      * @returns true | false
      */
-    public canTemplateBeSoldToTrader(itemTplId: string, traderId: string ): boolean
-    {
+    public canTemplateBeSoldToTrader(itemTplId: string, traderId: string): boolean {
         const traderMetaData = this.tradersMetaData[traderId];
         const buysItem = traderMetaData.itemsBuy.category.some(categoryId => this.itemHelper.isOfBaseclass(itemTplId, categoryId)) || traderMetaData.itemsBuy.id_list.includes(itemTplId);
         const notProhibited = !traderMetaData.itemsBuyProhibited.category.some(categoryId => this.itemHelper.isOfBaseclass(itemTplId, categoryId)) && !traderMetaData.itemsBuyProhibited.id_list.includes(itemTplId);
@@ -385,8 +352,7 @@ export class BrokerPriceManager
      * @param item Item
      * @returns TraderMetaData
      */
-    public getBestTraderForItem(pmcData: IPmcData, item: Item): TraderMetaData
-    {
+    public getBestTraderForItem(pmcData: IPmcData, item: Item): TraderMetaData {
         // explicit assignment of Broker when selling money for currency exchange, seems needless to go through everything.
         if (this.paymentHelper.isMoneyTpl(item._tpl)) return this.tradersMetaData[BrokerPriceManager.brokerTraderCurrencyExhangeId];
 
@@ -405,11 +371,9 @@ export class BrokerPriceManager
      * @param item Item 
      * @returns SellDecision
      */
-    public getBestSellDecisionForItem(pmcData: IPmcData, item: Item): SellDecision
-    {
+    public getBestSellDecisionForItem(pmcData: IPmcData, item: Item): SellDecision {
         // Client data is very important for accuracy 
-        if (this._clientBrokerSellData[item._id] != undefined && modConfig.useClientPlugin)
-        {
+        if (this._clientBrokerSellData[item._id] != undefined && modConfig.useClientPlugin) {
             //console.log(`[BROKER] RECEIVED SELL DATA FROM CLIENT FOR ${item._id}`);
             const clientSellData = this._clientBrokerSellData[item._id];
             const itemIsMoney = this.paymentHelper.isMoneyTpl(item._tpl);
@@ -431,15 +395,15 @@ export class BrokerPriceManager
         // ragfairIgnoreAttachments - Check if we ignore each child ragfair price when calculating ragfairPrice.
         // When accounting child items - total flea price of found in raid weapons can be very unbalanced due to how in SPT-AKI
         // some random, even default weapon attachments have unreasonable price on flea.
-        const ragfairPrice = modConfig.ragfairIgnoreAttachments ? this.getSingleItemRagfairPrice(item) : this.getItemRagfairPrice(item, pmcData);  
+        const ragfairPrice = modConfig.ragfairIgnoreAttachments ? this.getSingleItemRagfairPrice(item) : this.getItemRagfairPrice(item, pmcData);
+
         // console.log(`[traderPrice] ${traderPrice}`);      
         // console.log(`[ragfairPrice] ${ragfairPrice}`);      
         // console.log(`[TAX] ${this.ragfairTaxHelper.calculateTax(item, pmcData, ragfairPrice, this.getItemStackObjectsCount(item), true)}`);
         // console.log("PARAMS:",item, pmcData, ragfairPrice, this.getItemStackObjectsCount(item), true);
 
         // Tarkov price logic is simple - Math.Floor profits, Math.Ceil losses, Round Taxes.
-        if (modConfig.useRagfair && ragfairPrice >= traderPrice && this.canSellOnFlea(item) && this.playerCanUseFlea(pmcData))
-        {
+        if (modConfig.useRagfair && ragfairPrice >= traderPrice && this.canSellOnFlea(item) && this.playerCanUseFlea(pmcData)) {
             return {
                 traderId: BrokerPriceManager.brokerTraderId,
                 price: Math.ceil(ragfairPrice),
@@ -472,8 +436,7 @@ export class BrokerPriceManager
      * @returns Flea tax value.
      */
     // Reference "GClass1969.CalculateTaxPrice()"
-    public getItemRagfairTax(item: Item, pmcData: IPmcData, requirementsPrice: number, offerItemCount: number, sellInOnePiece: boolean): number
-    {
+    public getItemRagfairTax(item: Item, pmcData: IPmcData, requirementsPrice: number, offerItemCount: number, sellInOnePiece: boolean): number {
         if (requirementsPrice < 1 || offerItemCount < 1) return 0;
 
         const num = this.getBaseTaxForAllItems(pmcData, item, offerItemCount);
@@ -516,8 +479,7 @@ export class BrokerPriceManager
         if (item == undefined) throw (`BrokerPriceManager | Couldn't find item with template ${item._tpl} when calculating flea tax!`);
         num6 *= itemTpl._props.RagFairCommissionModifier;
 
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.BUFF))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.BUFF)) {
             // "Points" is "Buff.value"
             const buffComponent = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.BUFF);
             const buffType = item.upd.Buff.buffType;
@@ -528,8 +490,7 @@ export class BrokerPriceManager
         return Math.ceil(num6);
     }
 
-    public getBaseTaxForAllItems(pmcData: IPmcData, item: Item, itemCount: number, basePriceSrc?: Record<string, number>): number
-    {
+    public getBaseTaxForAllItems(pmcData: IPmcData, item: Item, itemCount: number, basePriceSrc?: Record<string, number>): number {
         const itemAndChildren = this.itemHelper.findAndReturnChildrenAsItems(pmcData.Inventory.items, item._id);
         // pass isFence explicitly true, to skip "passesRestrictions"
         return itemAndChildren.reduce((accum, curr) => accum + this.getBuyoutPriceForSingleItem(curr, (curr._id === item._id) ? itemCount : 0, true, basePriceSrc), 0);
@@ -542,8 +503,7 @@ export class BrokerPriceManager
      * @param item Item to check.
      * @returns true | false - can the item be sold on flea?
      */
-    public canSellOnFlea(item: Item): boolean
-    {
+    public canSellOnFlea(item: Item): boolean {
         // const itemTpl = this.itemHelper.getItem(item._tpl)[1]; - keep it here if I move to itemHelper later
         const itemTpl = this.dbItems[item._tpl];
         const foundInRaid = modConfig.ragfairIgnoreFoundInRaid || (item.upd?.SpawnedInSession ?? false);
@@ -558,8 +518,7 @@ export class BrokerPriceManager
      * @param pmcData PMC profile data
      * @returns true | false. Does user have the level to use flea?
      */
-    public playerCanUseFlea(pmcData: IPmcData): boolean
-    {
+    public playerCanUseFlea(pmcData: IPmcData): boolean {
         return modConfig.ragfairIgnorePlayerLevel || (pmcData.Info.Level >= this.dbServer.getTables().globals.config.RagFair.minUserLevel);
     }
 
@@ -570,15 +529,13 @@ export class BrokerPriceManager
      * @param sellData Body of a sell request.
      * @returns Processed sell request data.
      */
-    public processSellRequestDataForMostProfit(pmcData: IPmcData, sellData: IProcessSellTradeRequestData): ProcessedSellData
-    {
+    public processSellRequestDataForMostProfit(pmcData: IPmcData, sellData: IProcessSellTradeRequestData): ProcessedSellData {
         const sellDataItems = sellData.items;
-        return sellDataItems.reduce((accum, currItem) => 
-        {
+        return sellDataItems.reduce((accum, currItem) => {
             const inventoryItem = this.getItemFromInventoryById(currItem.id, pmcData);
             const sellDecision = this.getBestSellDecisionForItem(pmcData, inventoryItem);
             const groupByTraderId = sellDecision.traderId;
-            const itemPrice = sellDecision.price; 
+            const itemPrice = sellDecision.price;
             const itemTax = (sellDecision.tax ?? 0);
             const commission = sellDecision.commission;
             const commissionInRoubles = sellDecision.commissionInRoubles;
@@ -587,8 +544,7 @@ export class BrokerPriceManager
             const itemStackObjectsCount = this.getItemStackObjectsCount(inventoryItem);
             // No need to stress the server and count every child when we ignore item children, due to how getFullItemCont works.
             const fullItemCount = modConfig.ragfairIgnoreAttachments ? itemStackObjectsCount : this.getFullItemCount(inventoryItem, pmcData);
-            if (accum[groupByTraderId] == undefined)
-            {
+            if (accum[groupByTraderId] == undefined) {
                 // Create new group
                 accum[groupByTraderId] = {
                     isFleaMarket: BrokerPriceManager.isFleaMarket(groupByTraderId),
@@ -611,8 +567,7 @@ export class BrokerPriceManager
                     }
                 };
             }
-            else 
-            {
+            else {
                 // Updating existing group
                 accum[groupByTraderId].totalPrice += itemPrice;
                 accum[groupByTraderId].totalTax += itemTax;
@@ -639,8 +594,7 @@ export class BrokerPriceManager
      * @returns number - trader price of an item
      */
     // Reference - "TraderClass.GetUserItemPrice"
-    public getItemTraderPrice(pmcData: IPmcData, item: Item, traderId: string): number
-    {
+    public getItemTraderPrice(pmcData: IPmcData, item: Item, traderId: string): number {
         // explicit currency pricing, price is rounded on getBestSellDecision.
         if (this.paymentHelper.isMoneyTpl(item._tpl)) return this._currencyBasePrices[item._tpl] * this.getBrokerBuyRates()[item._tpl] * this.getItemStackObjectsCount(item);
 
@@ -650,7 +604,7 @@ export class BrokerPriceManager
         if (traderMeta == undefined) throw (`BrokerPriceManager | getTraderItemPrice, couldn't find trader meta by id ${traderId}`);
 
         let price = this.getBuyoutPriceForAllItems(pmcData, item, 0, traderId === Traders.FENCE);
-        price = price * (1 - traderMeta.buyPriceCoef/100); // apply trader price modifier
+        price = price * (1 - traderMeta.buyPriceCoef / 100); // apply trader price modifier
         return price;
     }
 
@@ -658,8 +612,7 @@ export class BrokerPriceManager
      * Collects and returns configured "buyRate" property values in a dictionary(record).
      * @returns Record, key - currency template id, value - buy rate from mod config.
      */
-    public getBrokerBuyRates(): Record<string, number>
-    {
+    public getBrokerBuyRates(): Record<string, number> {
         const rates = {};
         rates[Money.DOLLARS] = modConfig.buyRateDollar;
         rates[Money.EUROS] = modConfig.buyRateEuro;
@@ -676,17 +629,15 @@ export class BrokerPriceManager
      * @returns number
      */
     // Refernce - "GClass1969.CalculateBasePriceForAllItems"
-    public getBuyoutPriceForAllItems(pmcData: IPmcData, item: Item, itemCount: number, isFence: boolean, basePriceSrc?: Record<string, number>): number
-    {
+    public getBuyoutPriceForAllItems(pmcData: IPmcData, item: Item, itemCount: number, isFence: boolean, basePriceSrc?: Record<string, number>): number {
         let price = 0;
-        
+
         // Here should be check if item is a container with items
         // but no need for it, since it's checked clientside.
 
         const itemAndChildren = this.itemHelper.findAndReturnChildrenAsItems(pmcData.Inventory.items, item._id);
         //console.log(`[BUYOUT] BASE ITEM IS AMONG CHILDREN ARRAY ${itemAndChildren.find(itc => itc._id === item._id) != undefined}`)
-        for (const itemIter of itemAndChildren)
-        {
+        for (const itemIter of itemAndChildren) {
             const priceIter = this.getBuyoutPriceForSingleItem(itemIter, (itemIter._id === item._id) ? itemCount : 0, isFence, basePriceSrc);
             if (priceIter === 0) return 0;
             price += priceIter;
@@ -704,8 +655,7 @@ export class BrokerPriceManager
      * @returns number - buyout price
      */
     // Reference - "GClass1969.CalculateBuyoutBasePriceForSingleItem()" and "GClass1969.smethod_0()"
-    public getBuyoutPriceForSingleItem(item: Item, itemCount: number, isFence: boolean, basePriceSrc?: Record<string, number>): number
-    {
+    public getBuyoutPriceForSingleItem(item: Item, itemCount: number, isFence: boolean, basePriceSrc?: Record<string, number>): number {
         if (!this.passesBuyoutRestrictions(item, isFence)) return 0;
 
         if (itemCount < 1) itemCount = this.getItemStackObjectsCount(item);
@@ -721,8 +671,7 @@ export class BrokerPriceManager
         const props = this.dbItems[item._tpl]?._props;
         if (props == null) throw ("BrokerPriceManager | getBuyoutPriceForSingleItem \"props\" is undefined, couldn't find item template in database!");
 
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.REPAIRABLE))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.REPAIRABLE)) {
             // "Points" are Durability
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.REPAIRABLE);
             const num2 = 0.01 * Math.pow(0, component.maxPoints);
@@ -730,52 +679,44 @@ export class BrokerPriceManager
             const num4 = props.RepairCost * (num3 - Math.ceil(component.points));
             price = price * (num3 / component.templateMaxPoints + num2) - num4;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.BUFF))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.BUFF)) {
             // "Points" is Buff.value
             const buffType = item.upd.Buff.buffType;
             const priceModifier = (this.dbGlobals.config.RepairSettings.ItemEnhancementSettings[buffType] as IPriceModifier).PriceModifier;
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.BUFF);
             price *= 1 + Math.abs(component.points - 1) * priceModifier;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.DOGTAG))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.DOGTAG)) {
             // "Points" is Dogtag.Level
             price *= this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.DOGTAG).points;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.KEY))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.KEY)) {
             // "Points" is NumberOfUsages
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.KEY);
             // Important! Use Math.max to avoid dividing by 0, when point, maxpoints, templatemaxpoints in component equal 1.
             price = price / Math.max(component.templateMaxPoints * (component.templateMaxPoints - component.points), 1);
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.RESOURCE))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.RESOURCE)) {
             // "Points" is Value, "MaxPoints" is MaxResource
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.RESOURCE);
             price = price * 0.1 + price * 0.9 / component.maxPoints * component.points;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.SIDE_EFFECT))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.SIDE_EFFECT)) {
             // "Points" is Value, "MaxPoints" is MaxResource
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.SIDE_EFFECT);
             price = price * 0.1 + price * 0.9 / component.maxPoints * component.points;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.MEDKIT))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.MEDKIT)) {
             // "Points" is HpResource, "MaxPoints" is MaxResource
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.MEDKIT);
             price = price / component.maxPoints * component.points;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.FOOD_DRINK))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.FOOD_DRINK)) {
             // "Points" is HpPercent, "MaxPoints" is MaxResource
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.FOOD_DRINK);
             price = price / component.maxPoints * component.points;
         }
-        if (this.componentHelper.hasComponent(item, ItemComponentTypes.REPAIRKIT))
-        {
+        if (this.componentHelper.hasComponent(item, ItemComponentTypes.REPAIRKIT)) {
             // "Points" is Resource, "MaxPoints" is MaxRepairResource
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.REPAIRKIT);
             price = price / component.maxPoints * Math.max(component.points, 1);
@@ -784,42 +725,35 @@ export class BrokerPriceManager
     }
 
     // Reference - GClass1969.CalculateBuyoutBasePriceForSingleItem() (the restriction checking part)
-    public passesBuyoutRestrictions(item: Item, isFence: boolean): boolean
-    {
+    public passesBuyoutRestrictions(item: Item, isFence: boolean): boolean {
         let component: ItemPointsData;
         const buyoutRestrictions = this.dbGlobals.config.TradingSettings.BuyoutRestrictions;
-        if (!isFence && this.componentHelper.hasComponent(item, ItemComponentTypes.MEDKIT))
-        {
+        if (!isFence && this.componentHelper.hasComponent(item, ItemComponentTypes.MEDKIT)) {
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.MEDKIT);
-            return !(component.points/component.maxPoints < buyoutRestrictions.MinMedsResource);
+            return !(component.points / component.maxPoints < buyoutRestrictions.MinMedsResource);
         }
-        if (!isFence && this.componentHelper.hasComponent(item, ItemComponentTypes.FOOD_DRINK))
-        {
+        if (!isFence && this.componentHelper.hasComponent(item, ItemComponentTypes.FOOD_DRINK)) {
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.FOOD_DRINK);
             return !(component.points < buyoutRestrictions.MinFoodDrinkResource);
         }
-        if (!isFence && this.componentHelper.hasComponent(item, ItemComponentTypes.REPAIRABLE))
-        {
+        if (!isFence && this.componentHelper.hasComponent(item, ItemComponentTypes.REPAIRABLE)) {
             component = this.componentHelper.getItemComponentPoints(item, ItemComponentTypes.REPAIRABLE);
             return !(component.maxPoints < component.templateMaxPoints * buyoutRestrictions.MinDurability || component.points < component.maxPoints * buyoutRestrictions.MinDurability);
         }
         return true;
     }
 
-    public isMissingVitalParts(item: Item): boolean
-    {
+    public isMissingVitalParts(item: Item): boolean {
         return this.getMissingVitalPartsCount(item) > 0;
     }
 
-    public getMissingVitalPartsCount(item: Item): number
-    {
+    public getMissingVitalPartsCount(item: Item): number {
         //const tpl = this.dbItems[item._tpl];
         //tpl._props.Slots[0].
         return 0;
     }
 
-    public getVitalParts(item: Item): any
-    {
+    public getVitalParts(item: Item): any {
         //item.slotId
         return;
     }
@@ -829,8 +763,7 @@ export class BrokerPriceManager
      * @param itemTplId Item Template Id.
      * @returns ItemRagFairCosts - flea tax and average flea price.
      */
-    public getItemTplRagfairPrice(itemTplId: string): number
-    {
+    public getItemTplRagfairPrice(itemTplId: string): number {
         return this._itemRagfairPriceTable[itemTplId] ?? 0;
     }
 
@@ -846,42 +779,37 @@ export class BrokerPriceManager
      * @param itemTplId Item Template Id.
      * @returns number Average flea price
      */
-    private getItemTemplateRagfairPrice(itemTplId: string): number
-    {
+    private getItemTemplateRagfairPrice(itemTplId: string): number {
         // sellInOnePiece check is not needed - I'll leave this as a reminder for my goofy aah
         // took me 3 hours to realize that I checked for sellInOnePiece === false and couldn't get
         // fully operational item offers, because a weapon preset with all the mods is sold with "sellInOnePiece" = true
-        
+
         // On the other hand, why non-operational lower receivers of M4A1 cost 250k~ on flea?
 
-        const validOffersForItemTpl = this.ragfairOfferService.getOffersOfType(itemTplId)?.filter(offer => 
-        {    
+        const validOffersForItemTpl = this.ragfairOfferService.getOffersOfType(itemTplId)?.filter(offer => {
             //console.log(`[validOffersForItemTpl] ${JSON.stringify(offer.user?.memberType)}`);
             const firstItem = offer.items[0];
             if (
                 offer.user?.memberType === MemberCategory.TRADER || // no trader offers
-                    offer.items.length < 1 || // additional reliability measure
-                    offer.requirements.some(requirement => !Object.keys(Money).some(currencyName => Money[currencyName] === requirement._tpl)) || // no barter offers
-                    modConfig.ragfairIgnoreAttachments && this.presetHelper.hasPreset(firstItem._tpl) && offer.items.length === 1 || // only "operational" weapon offers if config specifies
-                    !modConfig.ragfairIgnoreAttachments && this.presetHelper.hasPreset(firstItem._tpl) && offer.items.length > 1 ||// only "not operational" weapon offers if config specifies
-                    !this.presetHelper.hasPreset(firstItem._tpl) && offer.sellInOnePiece // for non-template items ignore "bulk" offers
+                offer.items.length < 1 || // additional reliability measure
+                offer.requirements.some(requirement => !Object.keys(Money).some(currencyName => Money[currencyName] === requirement._tpl)) || // no barter offers
+                modConfig.ragfairIgnoreAttachments && this.presetHelper.hasPreset(firstItem._tpl) && offer.items.length === 1 || // only "operational" weapon offers if config specifies
+                !modConfig.ragfairIgnoreAttachments && this.presetHelper.hasPreset(firstItem._tpl) && offer.items.length > 1 ||// only "not operational" weapon offers if config specifies
+                !this.presetHelper.hasPreset(firstItem._tpl) && offer.sellInOnePiece // for non-template items ignore "bulk" offers
             ) return false;
             return true;
         })
 
         // If somehow there were no valid offers (may happen sometimes, usually with event items like pumpkin masks)
         // meaning: validOffersForItemTpl might be 'undefined'
-        if (validOffersForItemTpl == null || validOffersForItemTpl?.length < 1)
-        {
+        if (validOffersForItemTpl == null || validOffersForItemTpl?.length < 1) {
             // TODO: maybe should change to min instead.
             return Math.max(this.ragfairPriceService.getStaticPriceForItem(itemTplId) ?? 0, this.ragfairPriceService.getDynamicPriceForItem(itemTplId) ?? 0);
         }
 
         // New implementation with lowest price, should be more precise too.
-        if (modConfig.ragfairUseLowestPrice)
-        {
-            validOffersForItemTpl.sort((a, b) => 
-            {
+        if (modConfig.ragfairUseLowestPrice) {
+            validOffersForItemTpl.sort((a, b) => {
                 const aPointsData = this.componentHelper.getRagfairItemComponentPoints(a.items[0]);
                 const bPointsData = this.componentHelper.getRagfairItemComponentPoints(b.items[0]);
                 const maxPointsComparison = bPointsData.maxPoints - aPointsData.maxPoints;
@@ -895,20 +823,18 @@ export class BrokerPriceManager
 
         // Here we get average price (Old implementation basically)
         // Collect offers with at least 85% durability/resource for decent sample size
-        const offersWith85to100PercentPoints = validOffersForItemTpl.filter(offer => 
-        {
+        const offersWith85to100PercentPoints = validOffersForItemTpl.filter(offer => {
             const firstItem = offer.items[0];
             const pointsData = this.componentHelper.getRagfairItemComponentPoints(firstItem);
             const originalMaxPtsBoundary = pointsData.templateMaxPoints * 0.85; // 85% of max capacity
             const hasAtLeast85PercentPoints = pointsData.points >= originalMaxPtsBoundary && pointsData.maxPoints >= originalMaxPtsBoundary;
-            return hasAtLeast85PercentPoints; 
+            return hasAtLeast85PercentPoints;
         });
 
-        return offersWith85to100PercentPoints.map(offer => offer.requirementsCost).reduce((accum, curr) => accum+curr, 0) / offersWith85to100PercentPoints.length;
+        return offersWith85to100PercentPoints.map(offer => offer.requirementsCost).reduce((accum, curr) => accum + curr, 0) / offersWith85to100PercentPoints.length;
     }
 
-    public getSingleItemRagfairPrice(item: Item): number
-    {
+    public getSingleItemRagfairPrice(item: Item): number {
         if (!modConfig.useRagfair) return 0;
         const pointsData = this.componentHelper.getRagfairItemComponentPoints(item);
         // Round, since weapon or armor durability can be float, etc.
@@ -918,25 +844,21 @@ export class BrokerPriceManager
         return this.getItemTplRagfairPrice(item._tpl) * pointsData.points / pointsData.templateMaxPoints * this.getItemStackObjectsCount(item);
     }
 
-    public getItemRagfairPrice(item: Item, pmcData: IPmcData): number
-    {
+    public getItemRagfairPrice(item: Item, pmcData: IPmcData): number {
         const itemAndChildren = this.itemHelper.findAndReturnChildrenAsItems(pmcData.Inventory.items, item._id);
         console.log(`[ITEM AND CHILDREN] ${JSON.stringify(itemAndChildren)}`)
         return itemAndChildren.reduce((accum, curr) => accum + this.getSingleItemRagfairPrice(curr), 0);
     }
 
-    public getItemFromInventoryById(itemId: string, pmcData: IPmcData): Item
-    {
+    public getItemFromInventoryById(itemId: string, pmcData: IPmcData): Item {
         return pmcData.Inventory.items.find(item => item._id === itemId);
     }
 
-    public getItemStackObjectsCount(item: Item): number
-    {
+    public getItemStackObjectsCount(item: Item): number {
         return item.upd?.StackObjectsCount ?? 1;
     }
 
-    public getDogtagLevel(item: Item): number
-    {
+    public getDogtagLevel(item: Item): number {
         return item.upd?.Dogtag.Level ?? 1;
     }
 
@@ -946,8 +868,7 @@ export class BrokerPriceManager
      * @param pmcData 
      * @returns 
      */
-    public getFullItemCount(item: Item, pmcData: IPmcData): number
-    {
+    public getFullItemCount(item: Item, pmcData: IPmcData): number {
         const itemAndChildren = this.itemHelper.findAndReturnChildrenAsItems(pmcData.Inventory.items, item._id);
         return itemAndChildren.reduce((accum, curr) => accum + this.getItemStackObjectsCount(curr), 0);
     }
@@ -957,15 +878,13 @@ export class BrokerPriceManager
      * @param input Number you want to format.
      * @returns Formatted string with spaces.
      */
-    public static getNumberWithSpaces(input: number): string 
-    {
+    public static getNumberWithSpaces(input: number): string {
         const parts = input.toString().split(".");
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
         return parts.join(".");
     }
 
-    public convertRoublesToTraderCurrency(roubleAmount: number, traderId: string): number
-    {
+    public convertRoublesToTraderCurrency(roubleAmount: number, traderId: string): number {
         const trader = this.dbTraders[traderId];
         if (trader == undefined) console.log(`[${modInfo.name} ${modInfo.version}] Error converting to trader currency. Couldn't find trader! Defaulting to RUB.`);
 

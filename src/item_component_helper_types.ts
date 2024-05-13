@@ -1,5 +1,4 @@
-export interface ItemPointsData
-{
+export interface ItemPointsData {
     points: number;
     maxPoints: number;
     templateMaxPoints: number;
@@ -7,8 +6,7 @@ export interface ItemPointsData
 
 // All component type which matter for trader price calculation
 // And tax calculation.
-export enum ItemComponentTypes
-    {
+export enum ItemComponentTypes {
     REPAIRABLE = "Repairable",
     BUFF = "Buff",
     DOGTAG = "Dogtag",
@@ -23,8 +21,7 @@ export enum ItemComponentTypes
 // Component types which matter for ragfair specifically.
 // They are used when filtering ragfair offers to calculate template average price.
 // Needed only to preserve current ragfair pricing implementation
-export enum RagfairItemComponentTypes
-    {
+export enum RagfairItemComponentTypes {
     REPAIRABLE = "Repairable",
     KEY = "Key",
     RESOURCE = "Resource",
@@ -33,8 +30,7 @@ export enum RagfairItemComponentTypes
     REPAIRKIT = "RepairKit"
 }
 
-export enum ClassesWithPoints 
-    {
+export enum ClassesWithPoints {
     ARMORED_EQUIPMENT = "57bef4c42459772e8d35a53b",
     MEDS = "543be5664bdc2dd4348b4569",
     FOOD_DRINK = "543be6674bdc2df1348b4569",
