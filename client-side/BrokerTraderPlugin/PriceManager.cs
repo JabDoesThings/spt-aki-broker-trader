@@ -16,6 +16,7 @@ using EFT.Communications;
 using BrokerTraderPlugin.Reflections.Extensions;
 using Comfort.Common;
 using Aki.Reflection.Utils;
+using BepInEx.Logging;
 
 namespace BrokerTraderPlugin
 {
@@ -165,7 +166,7 @@ namespace BrokerTraderPlugin
             }
         }
         public static Dictionary<string, SupplyData> SupplyData = new Dictionary<string, SupplyData>();
-        public static Dictionary<string, double> CurrencyBasePrices { get; set; } = new Dictionary<string, double>();
+        public static Dictionary<string, double> CurrencyBasePrices { get; set; } = [];
         // Requests in a static constructor will be performed only once for initialization.
         static PriceManager()
         {
@@ -228,7 +229,9 @@ namespace BrokerTraderPlugin
                 double amount = CurrencyBasePrices[item.TemplateId] * item.StackObjectsCount;
                 if (item.TemplateId == CurrencyHelper.DOLLAR_ID) amount *= ModConfig.BuyRateDollar;
                 if (item.TemplateId == CurrencyHelper.EURO_ID) amount *= ModConfig.BuyRateEuro;
+                
                 int roundedAmount = Convert.ToInt32(Math.Round(amount));
+
                 return new TraderItemPriceData(BROKER_TRADER_ID, ItemPrice.New(CurrencyHelper.ROUBLE_ID, roundedAmount), roundedAmount, roundedAmount, 0, 0);
             }
 
@@ -307,12 +310,12 @@ namespace BrokerTraderPlugin
             // !IMPORTANT Ceil the price. Reference -> AddOfferWindow.method_3().
             // Before passing offer requirements amount into CalculateTaxPrice its always Ceiled.
             int amount = Convert.ToInt32(Math.Ceiling(requirementsPrice));
+            
             // !IMPORTANT Use Mathf.RoundToInt for the tax. Helps with Infinity occurences.
             // The tax displayed on AddOfferWindow seems to be rounded due to calling FormatSeparate()
-            int tax = Mathf.RoundToInt((float)PriceHelper.CalculateTaxPrice(item, item.StackObjectsCount, amount, true));
+            int tax = Mathf.RoundToInt((float) PriceHelper.CalculateTaxPrice(item, item.StackObjectsCount, amount, true));
 
             int commission = Convert.ToInt32(Math.Round(amount * ModConfig.ProfitCommissionPercentage / 100));
-
 
             return new RagfairItemPriceData(ItemPrice.New(CurrencyHelper.ROUBLE_ID, amount - tax - commission), amount, tax, commission);
         }

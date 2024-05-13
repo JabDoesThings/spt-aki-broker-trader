@@ -24,6 +24,7 @@ using static UnityEngine.RemoteConfigSettingsHelper;
 using UnityEngine.UIElements;
 using InventoryOrganizingFeatures.Reflections.Extensions;
 using BrokerTraderPlugin.Reflections.Extensions;
+using BepInEx;
 
 namespace BrokerPatch
 {
@@ -54,7 +55,7 @@ namespace BrokerPatch
             }
             catch (Exception ex)
             {
-                var msg = $"{PluginInfo.PLUGIN_GUID} error! Threw an exception during GetUserItemPrice patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
+                var msg = $"{MyPluginInfo.PLUGIN_GUID} error4! Threw an exception during GetUserItemPrice patch, perhaps due to version incompatibility. Exception message: {ex.Message}\n{item.Description}";
                 Logger.LogError(msg);
                 NotificationManagerClass.DisplayWarningNotification(msg, EFT.Communications.ENotificationDurationType.Infinite);
                 throw ex;
@@ -161,7 +162,7 @@ namespace BrokerPatch
             }
             catch (Exception ex)
             {
-                var msg = $"{PluginInfo.PLUGIN_GUID} error! Threw an exception during EquivalentSum patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
+                var msg = $"{MyPluginInfo.PLUGIN_GUID} error5! Threw an exception during EquivalentSum patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
                 Logger.LogError(msg);
                 NotificationManagerClass.DisplayWarningNotification(msg, EFT.Communications.ENotificationDurationType.Infinite);
                 throw ex;
@@ -188,7 +189,7 @@ namespace BrokerPatch
             }
             catch (Exception ex)
             {
-                var msg = $"{PluginInfo.PLUGIN_GUID} error! Threw an exception during RefreshRagfairOnTraderScreenShow patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
+                var msg = $"{MyPluginInfo.PLUGIN_GUID} error6! Threw an exception during RefreshRagfairOnTraderScreenShow patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
                 Logger.LogError(msg);
                 NotificationManagerClass.DisplayWarningNotification(msg, EFT.Communications.ENotificationDurationType.Infinite);
                 throw ex;
@@ -246,14 +247,14 @@ namespace BrokerPatch
                             string message = messageInitVal;
                             foreach (var group in groupByTrader.Where(group => group.Key != BROKER_TRADER_ID))
                             {
-                                int totalPrice = group.Sum(data => data.Price);
+                                double totalPrice = group.Sum(data => data.Price);
                                 string currencyChar = CurrencyHelper.GetCurrencyChar(TradersList.First(trader => trader.Id == group.First().TraderId).Settings.Currency);
                                 message += $"    \u2022    {$"{group.Key} Nickname".RLocalized()}:    + {currencyChar} {regex.Replace(totalPrice.ToString(), " ")}\n\n";
                             }
                             // For Broker Trader - show flea rep increment
                             foreach (var group in groupByTrader.Where(group => group.Key == BROKER_TRADER_ID))
                             {
-                                int totalPrice = group.Where(item => !CurrencyHelper.IsCurrencyId(soldItems.First(soldItem => soldItem.Id == item.ItemId).TemplateId)).Sum(item => item.Price);
+                                double totalPrice = group.Where(item => !CurrencyHelper.IsCurrencyId(soldItems.First(soldItem => soldItem.Id == item.ItemId).TemplateId)).Sum(item => item.Price);
                                 if (totalPrice < 1) break; // if no "non-currency" items just break out of the loop
                                 string currencyChar = CurrencyHelper.GetCurrencyChar(ECurrencyType.RUB);
                                 string repIncStr = (totalPrice * RagfairSellRepGain).ToString();
@@ -275,8 +276,9 @@ namespace BrokerPatch
             }
             catch (Exception ex)
             {
-                var msg = $"{PluginInfo.PLUGIN_GUID} error! Threw an exception during SendDataOnDealButtonPress patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
+                var msg = $"{MyPluginInfo.PLUGIN_GUID} error2! Threw an exception during SendDataOnDealButtonPress patch, perhaps due to version incompatibility. Exception message: {ex.Message}";
                 Logger.LogError(msg);
+                Logger.LogError(ex.ToString());
                 NotificationManagerClass.DisplayWarningNotification(msg, EFT.Communications.ENotificationDurationType.Infinite);
                 throw ex;
             }

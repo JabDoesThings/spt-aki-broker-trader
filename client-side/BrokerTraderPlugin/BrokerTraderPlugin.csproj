@@ -12,9 +12,9 @@
 
   <ItemGroup>
     <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
-    <PackageReference Include="BepInEx.Core" Version="5.*" />
-    <PackageReference Include="BepInEx.PluginInfoProps" Version="1.*" />
-    <PackageReference Include="UnityEngine.Modules" Version="2019.4.39" IncludeAssets="compile" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.0.1" IncludeAssets="compile" />
   </ItemGroup>
   
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
@@ -22,32 +22,32 @@
   </ItemGroup>
 	
 	<ItemGroup>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Assembly-CSharp.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Assembly-CSharp.dll</HintPath>
+		<Reference Include="Aki.Common">
+		  <HintPath>dependencies\sptaki381\Aki.Common.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Aki.Reflection.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Aki.Reflection.dll</HintPath>
+		<Reference Include="Aki.Reflection">
+		  <HintPath>dependencies\sptaki381\Aki.Reflection.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Aki.Common.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Aki.Common.dll</HintPath>
+		<Reference Include="Assembly-CSharp">
+		  <HintPath>dependencies\sptaki381\Assembly-CSharp.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Newtonsoft.Json.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Newtonsoft.Json.dll</HintPath>
+		<Reference Include="Comfort">
+		  <HintPath>dependencies\sptaki381\Comfort.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Newtonsoft.Json.UnityConverters.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Newtonsoft.Json.UnityConverters.dll</HintPath>
+		<Reference Include="ItemComponent.Types">
+		  <HintPath>dependencies\sptaki381\ItemComponent.Types.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Comfort.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Comfort.dll</HintPath>
+		<Reference Include="Newtonsoft.Json">
+		  <HintPath>dependencies\sptaki381\Newtonsoft.Json.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\ItemComponent.Types.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\ItemComponent.Types.dll</HintPath>
+		<Reference Include="Newtonsoft.Json.UnityConverters">
+		  <HintPath>dependencies\sptaki381\Newtonsoft.Json.UnityConverters.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Unity.TextMeshPro.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Unity.TextMeshPro.dll</HintPath>
+		<Reference Include="Sirenix.Serialization">
+		  <HintPath>dependencies\sptaki381\Sirenix.Serialization.dll</HintPath>
 		</Reference>
-		<Reference Include="dependencies\$(TargetSptAkiVersion)\Sirenix.Serialization.dll">
-			<HintPath>dependencies\$(TargetSptAkiVersion)\Sirenix.Serialization.dll</HintPath>
+		<Reference Include="Unity.TextMeshPro">
+		  <HintPath>dependencies\sptaki381\Unity.TextMeshPro.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 </Project>

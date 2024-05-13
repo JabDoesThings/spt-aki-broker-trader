@@ -1,4 +1,5 @@
-﻿using EFT.InventoryLogic;
+﻿using BepInEx.Logging;
+using EFT.InventoryLogic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,22 +19,23 @@ namespace BrokerTraderPlugin.Reflections.Extensions
         {
             var methodNames = new string[]
             {
-                "GetIndexOfItemType",
-                "GetComponents",
+                //"GetIndexOfItemType",
+                // "GetComponents",
                 "GetAllItems",
                 "GetAllItemsFromCollection",
-                "GetAllItemsFromCollections",
-                "FilterNullContainers",
+                //"GetAllItemsFromCollections",
+                //"FilterNullContainers",
                 //"GetAllMergedItems", - not present, anymore (maybe since SPT 3.7.1)
-                "GetAllItemsNonAlloc",
-                "GetTopLevelItemsFromCollection"
+                //"GetAllItemsNonAlloc",
+                //"GetTopLevelItemsFromCollection"
             };
+
             ReflectedType = ReflectionHelper.FindClassTypeByMethodNames(methodNames);
         }
 
         public static IEnumerable<Item> RGetAllItems(this Item item)
         {
-            return ReflectedType.InvokeMethod<IEnumerable<Item>>("GetAllItems", new object[] { item }, new Type[] { typeof(Item) });
+            return ReflectedType.InvokeMethod<IEnumerable<Item>>("GetAllItems", [item], [typeof(Item)]);
         }
     }
 }
