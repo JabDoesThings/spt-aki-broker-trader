@@ -256,7 +256,7 @@ namespace BrokerTraderPlugin
             {
                 // Debug.LogError("supplyData is null"); doesn't seem to work
                 // use long duration, infinite is unneeded.
-                NotificationManagerClass.DisplayWarningNotification("BrokerTrader error! GetTraderItemPriceData - supplyData is null", EFT.Communications.ENotificationDurationType.Long);
+                NotificationManagerClass.DisplayWarningNotification("BrokerTrader error! GetTraderItemPriceData - supplyData is null", EFT.Communications.ENotificationDurationType.Default);
                 return new TraderItemPriceData(trader.Id, null, -1, -1);
             }
             if (!trader.RInfo().CanBuyItem(item)) return new TraderItemPriceData(trader.Id, null, -1, -1);

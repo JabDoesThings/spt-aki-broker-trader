@@ -152,9 +152,12 @@ export class BrokerTradeController extends TradeController {
                             // 3.7.X Code
                             // const repGain = this.ragfairConfig.sell.reputation.gain;
                             // 3.8.X Code
-                            const repGain = this.databaseServer.getTables().globals.config.RagFair.ratingIncreaseCount;
+                            // const repGain = this.databaseServer.getTables().globals.config.RagFair.ratingIncreaseCount;
+                            // const ratingIncrease = tReqData.totalPrice * repGain;
 
-                            const ratingIncrease = tReqData.totalPrice * repGain;
+                            // Not sure if this is Rub or if I should use totalProfit.
+                            const ratingIncrease = tReqData.totalPrice * (1/5000000 /* 0.01 rep per 50,000 */);
+
                             pmcData.RagfairInfo.isRatingGrowing = true;
                             pmcData.RagfairInfo.rating += ratingIncrease;
                             verboseLogger.explicitSuccess(
